@@ -1,2 +1,47 @@
-# Sistemas_Operativos
-TA043 - Curso Mendez 2025|2C
+# Sistemas Operativos - Curso Mendez
+Cursada el segundo cuatrimestre de 2025. [Pagina de la cátedra](https://fisop.github.io/website/).
+
+### Temario
+- Introducción a los Sistemas Operativos
+	- Rol y propósito
+	- Funcionalidad típica
+	- Arquitecturas: monolítico, en capas, micro-kernel
+- Kernel
+	- Userland vs Kernelspace
+	- Modo usuario / supervisor (modo dual)
+	- Protección y separación
+- Llamadas y APIs
+	- Llamadas al sistema (system calls)
+	- Llamadas a biblioteca (library calls)
+	- API (application program interface)
+- Interrupciones
+	- Uso de interrupciones
+	- Transición entre modo usuario y kernel
+	- Dispatching y cambio de contexto
+- Procesos
+	- Concepto de proceso
+	- Concepto de thread
+	- Estructuras de datos: ready list, process control block
+	- Abstracción de recursos
+- Scheduling
+	- Políticas de planificación
+	- Con desalojo (preemptive)
+	- Sin desalojo (non-preemptive)
+- Concurrencia
+	- Acceso atómico a objetos
+	- Primitivas de sincronización
+	- Multiprocesadores: spin-locks, reentrancy
+- Virtualización de memoria
+	- Memoria física
+	- Gestión de memoria a nivel hardware
+	- Paginación
+	- Memoria virtual
+	- Memoria caché
+- Seguridad
+	- Políticas y mecanismos de separación
+	- Métodos de seguridad
+	- Dispositivos de seguridad
+	- Protección, control de acceso y autenticación
+- Filesystems
+	- VFS: dato, metadato, operaciones, organización
+	- Directorios: contenido y estructura
