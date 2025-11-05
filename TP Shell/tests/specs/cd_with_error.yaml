@@ -1,0 +1,12 @@
+name: cd_with_error
+description: "cd with error should display message and allow further operations"
+command: |2
+  {shell_binary}
+stdin: |2
+  cd /no-existe
+  cd /home
+  pwd
+expected_stdout: |2
+  cannot cd to /no-existe : No such file or directory
+  /home
+

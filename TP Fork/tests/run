@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+docker build -t fisop-fork -f Dockerfile .
+docker run --rm fisop-fork ./tests/test-fork .

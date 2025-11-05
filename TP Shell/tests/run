@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+docker build -t fisop-shell -f Dockerfile .
+docker run --rm fisop-shell ./tests/test-shell /shell/sh /shell/tests/reflector $1

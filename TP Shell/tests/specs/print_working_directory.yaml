@@ -1,0 +1,10 @@
+name: print_working_directory
+description: "prints working directory using pwd"
+command: |2
+  HOME=/home sh -c "{shell_binary}"
+stdin: |2
+  pwd
+  /bin/pwd
+expected_stdout: |2
+  /home
+  /home

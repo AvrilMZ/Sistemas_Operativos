@@ -1,0 +1,11 @@
+name: complex_env
+description: "complex env variable"
+command: |2
+  {shell_binary} | grep -E 'HELLO|BYE'
+stdin: |2
+  env
+  HELLO=4 BYE=6 env
+  env
+expected_stdout: |2
+  HELLO=4
+  BYE=6

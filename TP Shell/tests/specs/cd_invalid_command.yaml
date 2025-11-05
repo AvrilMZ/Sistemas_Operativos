@@ -1,0 +1,10 @@
+name: cd_invalid_command
+description: "cd using an invalid command should fail"
+command: |2
+  {shell_binary}
+stdin: |2
+  cd-command /home
+  pwd
+expected_stdout: |2
+  exec failed : No such file or directory
+  /root

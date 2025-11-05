@@ -1,0 +1,9 @@
+name: redirect_stdout_and_stderr
+description: "redirect stdout and stderr works as expected"
+command: |2
+  {shell_binary} >/dev/null 2>/dev/null; cat {tempdir}/redirect_stdout.txt; cat {tempdir}/redirect_stderr.txt
+stdin: |2
+  ls /bin/true /noexiste >{tempdir}/redirect_stdout.txt 2>{tempdir}/redirect_stderr.txt
+expected_stdout: |2
+  /bin/true
+  ls: cannot access '/noexiste': No such file or directory

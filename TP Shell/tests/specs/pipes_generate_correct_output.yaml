@@ -1,0 +1,8 @@
+name: pipes_generate_correct_output
+description: "pipes generate the correct output result"
+command: |2
+  sh -c "{shell_binary}"
+stdin: |2
+  echo hello | grep he | wc -l
+expected_stdout: |2
+  1
