@@ -1,0 +1,11 @@
+fisopfs.c
+src/bitmap.c
+src/directory.c
+src/filesystem.c
+src/inode.c
+src/bitmap.h
+src/data_block.h
+src/directory.h
+src/filesystem.h
+src/inode.h
+src/superblock.h
