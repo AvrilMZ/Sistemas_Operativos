@@ -2,6 +2,8 @@
 
 FS_BIN=./fisopfs
 MNT=./mnt #donde se monta el fs
+DISK="persistence_file.fisopfs"
+PERSISTENT_MSG="Hola desde mnt/dir2/file !"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -38,11 +40,14 @@ fusermount -u "$MNT" 2>/dev/null
 
 # Limpiar disco anterior
 rm -f "$DISK"
+echo "Eliminando archivo de persistencia previo para iniciar un nuevo File System..."
 
 # Montar el FS en background
-$FS --filedisk "$DISK" "$MNT" -f &
+echo "Montando File System..."
+$FS_BIN --filedisk "$DISK" "$MNT" &
 FSPID=$!
 sleep 1
+echo
 
 test_title "Creación de archivo (touch)"
 touch "$MNT/archivo1" && test_pass "Archivo creado" || test_fail "No se pudo crear archivo"
@@ -113,8 +118,46 @@ if rmdir "$MNT/dir2" 2>/dev/null; then
 else
     test_pass "No permite borrar directorio no vacío"
 fi
-rm "$MNT/dir2/file"
-rmdir "$MNT/dir2"
+echo $PERSISTENT_MSG >> "$MNT/dir2/file"
+echo
+
+# Desmontar y terminar
+fusermount -u "$MNT"
+wait $FSPID 2>/dev/null
+
+test_title "Desmonado del File System"
+[ $(ls -A /mnt) ] && test_fail "Error al desmontar el File System" || test_pass "File System desmontado correctamente"
+echo
+
+# Ahora el archivo ya debería existir
+test_title "Creación de archivo de persistencia"
+if [ -f "$DISK" ]; then
+    test_pass "Archivo de persistencia creado - $DISK"
+else
+    test_fail "El archivo de persistencia no existe; se creará uno nuevo: $DISK"
+fi
+echo
+
+# Montar el FS nuevamente
+$FS_BIN --filedisk "$DISK" "$MNT" &
+FSPID=$!
+sleep 1
+
+test_title "Persistencia en disco"
+[[ -f "$MNT/archivo2" && -f "$MNT/binario" ]] && test_pass "Archivos persistidos correctamente" || test_fail "Error al persistir los archivos"
+
+[ -d "$MNT/dir2" ] && test_pass "Subdirectorio persistido correctamente" || test_fail "Error al persistir subdirectorio"
+
+if [ -f "$MNT/dir2/file" ]; then
+    OUT=$(cat "$MNT/dir2/file")
+    if [[ "$OUT" == $PERSISTENT_MSG ]]; then
+        test_pass "Archivo de subdirectorio con contenido persistido correctamente"
+    else
+        test_fail "Error al persistir el contenido del archivo del subdirectorio"
+    fi
+else
+    test_fail "Error al persistir el archivo del subdirectorio"
+fi
 echo
 
 echo
@@ -202,11 +245,12 @@ echo
 
 # Desmontar y terminar
 fusermount -u "$MNT"
-kill $FSPID
 wait $FSPID 2>/dev/null
+echo
+echo "File System desmontado."
 
 echo -e "\n\n${YELLOW}========================================${NC}"
-echo -e "${YELLOW}Resumen de tests:${NC}"
+echo -e "${YELLOW}RESUMEN DE TESTS${NC}"
 echo -e "${GREEN}Exitosos: $PASSED${NC}"
 echo -e "${RED}Fallidos: $FAILED${NC}"
 echo -e "${YELLOW}Total: $TOTAL${NC}"

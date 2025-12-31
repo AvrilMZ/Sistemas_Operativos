@@ -1,8 +1,6 @@
 CC = gcc
 CFLAGS := -ggdb3 -O2 -Wall -std=c11 -Wno-unused-function -Wvla -D_FILE_OFFSET_BITS=64
 
-SRCDIR = src
-
 # Flags for FUSE
 LDLIBS := $(shell pkg-config fuse --cflags --libs)
 
@@ -12,7 +10,7 @@ FS_NAME := fisopfs
 SRCS := fisopfs.c \
         src/filesystem.c \
         src/inode.c \
-        src/bitmap.c \
+        src/intmap.c \
         src/directory.c
 
 OBJS := $(SRCS:.c=.o)
@@ -38,6 +36,6 @@ exec:
 	./dock exec
 
 clean:
-	rm -rf $(EXEC) *.o $(SRCDIR)/*.o core vgcore.* $(FS_NAME) test
+	rm -rf $(EXEC) *.o core vgcore.* $(FS_NAME) test
 
 .PHONY: all build clean format docker-build docker-run docker-exec

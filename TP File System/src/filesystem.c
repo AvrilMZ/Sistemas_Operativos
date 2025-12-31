@@ -5,7 +5,6 @@
 #include "directory.h"
 #include <stdio.h>
 
-
 void
 fs_init(filesystem_t *fs)
 {
@@ -24,8 +23,8 @@ fs_init(filesystem_t *fs)
 	fs->superblock.max_filename_length = MAX_FILENAME_LEN;
 	fs->superblock.max_path_length = MAX_PATH_LEN;
 
-	// bitmaps
-	bitmap_init(&fs->bitmap);
+	// intmaps
+	intmap_init(&fs->intmap);
 
 	// inodes
 	for (size_t i = 0; i < MAX_INODES; i++) {
@@ -33,8 +32,8 @@ fs_init(filesystem_t *fs)
 	}
 
 	// init root
-	set_block_used(&fs->bitmap, 0);
-	set_inode_used(&fs->bitmap, 0);
+	set_block_used(&fs->intmap, 0);
+	set_inode_used(&fs->intmap, 0);
 
 	inode_t *root = &fs->inodes[0];
 	root->inode_type = INODE_DIR;
@@ -63,6 +62,7 @@ fs_create_file(filesystem_t *fs, const char *path, mode_t mode)
 		return -1;
 	}
 
+	// múltiples directorios anidados
 	if (strlen(path) >= MAX_PATH_LEN) {
 		return -ENAMETOOLONG;
 	}
@@ -81,34 +81,30 @@ fs_create_file(filesystem_t *fs, const char *path, mode_t mode)
 		return -EEXIST;
 	}
 
-	int inode_indx = allocate_inode(fs);
-	if (inode_indx < 0) {
+	int inode_idx = allocate_inode(fs);
+	if (inode_idx < 0) {
 		return -ENOSPC;
 	}
 
 	fs->superblock.free_inodes_count--;
 
-	inode_t *inode = &fs->inodes[inode_indx];
-	inode->permission_bits = mode;
+	inode_t *inode = &fs->inodes[inode_idx];
+	inode_init(inode);
+	inode->inode_type = INODE_FILE;
 	inode->owner_user_id = getuid();
 	inode->owner_group_id = getgid();
-	inode->file_size_bytes = 0;
-	inode->inode_type = INODE_FILE;
-	for (int i = 0; i < NUM_DIRECT_BLOCKS; i++) {
-		inode->direct_block_ptrs[i] = -1;
-	}
+	inode->permission_bits = mode;
 
-	int block_free = find_free_block(&fs->bitmap);
+	int block_free = find_free_block(&fs->intmap);
 	if (block_free < 0 || inode_add_direct_block(fs, inode, block_free) == -1) {
-		inode_free(fs, inode_indx);
+		inode_free(fs, inode_idx);
 		fs->superblock.free_inodes_count++;
 		return -ENOSPC;
 	}
 
 	fs->superblock.free_blocks_count--;
-	int dir = directory_add_entry(parent_dir, filename, inode_indx);
-	if (dir != 0) {
-		inode_free(fs, inode_indx);
+	if (directory_add_entry(parent_dir, filename, inode_idx) != 0) {
+		inode_free(fs, inode_idx);
 		fs->superblock.free_inodes_count++;
 		fs->superblock.free_blocks_count++;
 		return -1;
@@ -207,9 +203,6 @@ fs_write_file(filesystem_t *fs,
 	}
 
 	inode_t *inode = &fs->inodes[inode_idx];
-	if ((inode->permission_bits & PERM_WRITE) == 0) {
-		return -1;
-	}
 
 	if (append) {
 		offset = inode->file_size_bytes;
@@ -228,7 +221,7 @@ fs_write_file(filesystem_t *fs,
 
 		int block_num = inode_get_direct_block(inode, block_index);
 		if (block_num < 0) {
-			int new_block_idx = find_free_block(&fs->bitmap);
+			int new_block_idx = find_free_block(&fs->intmap);
 			if (new_block_idx == -1) {
 				break;
 			}
@@ -292,28 +285,31 @@ fs_delete_file(filesystem_t *fs, const char *path)
 		return -EISDIR;
 	}
 
+	// eliminar la entrada del directorio
 	if (directory_remove_entry(parent_dir, filename) != 0) {
 		return -EIO;
 	}
 
 	inode_decrement_links(inode);
-	if (inode->hard_links_count > 0) {
-		return 0;
-	}
 
-	for (int i = 0; i < NUM_DIRECT_BLOCKS; i++) {
-		int block_idx = inode_get_direct_block(inode, i);
-		if (block_idx != -1) {
-			clear_block_used(&fs->bitmap, block_idx);
-			memset(fs->data_block[block_idx].data, 0, BLOCK_SIZE);
-			fs->superblock.free_blocks_count++;
-			inode->direct_block_ptrs[i] = -1;
+	// liberar el inode y los bloques si no quedan más links
+	if (inode->hard_links_count == 0) {
+		for (int i = 0; i < NUM_DIRECT_BLOCKS; i++) {
+			int block_idx = inode_get_direct_block(inode, i);
+			if (block_idx != -1) {
+				clear_block_used(&fs->intmap, block_idx);
+				memset(fs->data_block[block_idx].data,
+				       0,
+				       BLOCK_SIZE);
+				fs->superblock.free_blocks_count++;
+				inode->direct_block_ptrs[i] = -1;
+			}
 		}
-	}
 
-	clear_inode_used(&fs->bitmap, inode_idx);
-	inode_init(inode);
-	fs->superblock.free_inodes_count++;
+		clear_inode_used(&fs->intmap, inode_idx);
+		inode_init(inode);
+		fs->superblock.free_inodes_count++;
+	}
 
 	inode_update_mtime(&fs->inodes[fs->superblock.root_inode_number]);
 	inode_update_ctime(&fs->inodes[fs->superblock.root_inode_number]);
@@ -328,6 +324,7 @@ fs_create_directory(filesystem_t *fs, const char *path, mode_t mode, char *name)
 		return -1;
 	}
 
+	// múltiples directorios anidados
 	if (strlen(path) >= MAX_PATH_LEN) {
 		return -ENAMETOOLONG;
 	}
@@ -356,13 +353,13 @@ fs_create_directory(filesystem_t *fs, const char *path, mode_t mode, char *name)
 
 	inode_t *new_inode = &fs->inodes[new_inode_idx];
 	inode_init(new_inode);
+	// inode_init setea 1 link, pero los directorios inician con 2 ('.' y '..')
+	inode_increment_links(new_inode);
 	new_inode->inode_type = INODE_DIR;
-	new_inode->owner_user_id = getuid();
-	new_inode->owner_group_id = getgid();
 	new_inode->permission_bits = mode;
 	new_inode->file_size_bytes = sizeof(directory_t);
 
-	int new_block_idx = find_free_block(&fs->bitmap);
+	int new_block_idx = find_free_block(&fs->intmap);
 	if (new_block_idx < 0) {
 		inode_free(fs, new_inode_idx);
 		fs->superblock.free_inodes_count++;
@@ -371,7 +368,7 @@ fs_create_directory(filesystem_t *fs, const char *path, mode_t mode, char *name)
 
 	if (inode_add_direct_block(fs, new_inode, new_block_idx) == -1) {
 		inode_free(fs, new_inode_idx);
-		clear_block_used(&fs->bitmap, new_block_idx);
+		clear_block_used(&fs->intmap, new_block_idx);
 		fs->superblock.free_inodes_count++;
 		return -ENOSPC;
 	}
@@ -388,11 +385,14 @@ fs_create_directory(filesystem_t *fs, const char *path, mode_t mode, char *name)
 	// Agrega la entrada en el directorio padre
 	if (directory_add_entry(parent_dir, name, new_inode_idx) == -1) {
 		inode_free(fs, new_inode_idx);
-		clear_block_used(&fs->bitmap, new_block_idx);
+		clear_block_used(&fs->intmap, new_block_idx);
 		fs->superblock.free_inodes_count++;
 		fs->superblock.free_blocks_count++;
 		return -EIO;
 	}
+
+	// referencia mediante '..' del hijo
+	inode_increment_links(parent_dir_inode);
 
 	return 0;
 }
@@ -406,6 +406,7 @@ fs_list_directory(filesystem_t *fs,
 		return -1;
 	}
 
+	// múltiples directorios anidados
 	if (strlen(path) >= MAX_PATH_LEN) {
 		return -ENAMETOOLONG;
 	}
@@ -437,6 +438,7 @@ fs_remove_directory(filesystem_t *fs, const char *path)
 		return -1;
 	}
 
+	// múltiples directorios anidados
 	if (strlen(path) >= MAX_PATH_LEN) {
 		return -ENAMETOOLONG;
 	}
@@ -503,6 +505,7 @@ fs_statistics(filesystem_t *fs, const char *path, struct stat *st)
 	st->st_mtime = inode->last_modification_time;
 	st->st_ctime = inode->last_metadata_change_time;
 	st->st_size = inode->file_size_bytes;
+	st->st_nlink = inode->hard_links_count;
 
 	if (inode->inode_type == INODE_DIR) {
 		st->st_mode = FS_MODE_DIR | inode->permission_bits;
@@ -519,11 +522,11 @@ fs_statistics(filesystem_t *fs, const char *path, struct stat *st)
 int
 fs_resolve_path(filesystem_t *fs, const char *path)
 {
-	printf("[DEBUG] RESOLVE PATH - input '%s'\n", path);
 	if (!fs || !path || path[0] == '\0') {
 		return -1;
 	}
 
+	// múltiples directorios anidados
 	if (strlen(path) >= MAX_PATH_LEN) {
 		return -ENAMETOOLONG;
 	}
@@ -573,8 +576,8 @@ fs_resolve_parent(filesystem_t *fs,
                   inode_t **parent_inode,
                   char *target_name)
 {
-	if (!path || !fs || path[0] == '\0') {
-		return -1;
+	if (!fs || !path || path[0] == '\0') {
+		return -EINVAL;
 	}
 
 	if (strlen(path) >= MAX_PATH_LEN) {
@@ -583,6 +586,7 @@ fs_resolve_parent(filesystem_t *fs,
 
 	int len_path = strlen(path);
 	int pos_last_dir = -1;
+
 	for (int i = len_path - 1; i >= 0; i--) {
 		if (path[i] == '/') {
 			pos_last_dir = i;
@@ -590,16 +594,16 @@ fs_resolve_parent(filesystem_t *fs,
 		}
 	}
 
-	if (pos_last_dir == -1) {
-		return -1;
+	if (pos_last_dir < 0) {
+		return -EINVAL;
 	}
 
 	// Copiamos el target
-	int len_name = strlen(path) - (pos_last_dir + 1);
+	int len_name = len_path - (pos_last_dir + 1);
 	if (len_name <= 0 || len_name >= MAX_FILENAME_LEN) {
-		return -1;
+		return -EINVAL;
 	}
-	strncpy(target_name, path + (pos_last_dir + 1), MAX_FILENAME_LEN);
+	strncpy(target_name, path + pos_last_dir + 1, MAX_FILENAME_LEN);
 	target_name[MAX_FILENAME_LEN - 1] = '\0';
 
 	// Obtenemos el parent_inode
@@ -611,9 +615,8 @@ fs_resolve_parent(filesystem_t *fs,
 		parent_path[pos_last_dir] = '\0';
 	}
 	int parent_inode_number = fs_resolve_path(fs, parent_path);
-
-	if (parent_inode_number == -1) {
-		return -1;
+	if (parent_inode_number < 0) {
+		return parent_inode_number;
 	}
 
 	*parent_inode = &fs->inodes[parent_inode_number];
@@ -667,7 +670,7 @@ fs_create_symlink(filesystem_t *fs, const char *target, const char *linkpath)
 	}
 	inode->file_size_bytes = (uint32_t) len;
 
-	int block_free = find_free_block(&fs->bitmap);
+	int block_free = find_free_block(&fs->intmap);
 	if (block_free < 0 || inode_add_direct_block(fs, inode, block_free) != 0) {
 		inode_free(fs, inode_idx);
 		fs->superblock.free_inodes_count++;
@@ -810,35 +813,5 @@ fs_change_owner(filesystem_t *fs, const char *path, uid_t uid, gid_t gid)
 	inode->owner_user_id = uid;
 	inode->owner_group_id = gid;
 	inode_update_ctime(inode);
-	return 0;
-}
-
-int
-fs_check_permission(filesystem_t *fs, int inode_num, uid_t uid, gid_t gid, int access_mode)
-{
-	if (!fs || inode_num < 0 || inode_num >= MAX_INODES) {
-		return -EINVAL;
-	}
-
-	inode_t *inode = &fs->inodes[inode_num];
-
-	int r_bit = inode->permission_bits & PERM_READ;
-	int w_bit = inode->permission_bits & PERM_WRITE;
-	int x_bit = inode->permission_bits & PERM_EXEC;
-
-	int allowed_read = r_bit ? 1 : 0;
-	int allowed_write = w_bit ? 1 : 0;
-	int allowed_exec = x_bit ? 1 : 0;
-
-	if ((access_mode & R_OK) && !allowed_read) {
-		return -EACCES;
-	}
-	if ((access_mode & W_OK) && !allowed_write) {
-		return -EACCES;
-	}
-	if ((access_mode & X_OK) && !allowed_exec) {
-		return -EACCES;
-	}
-
 	return 0;
 }

@@ -23,10 +23,7 @@ typedef struct inode {
 } inode_t;
 
 /**
- * Initializes an inode structure with default values.
- *
- * All pointers are set to 0, size is 0, timestamps set to current time,
- * links_count is 0, permissions are default.
+ * Initializes an inode structure with default values, assuming that the inode will be an INODE_FILE.
  */
 void inode_init(inode_t *inode);
 

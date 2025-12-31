@@ -8,13 +8,13 @@
 
 #include "config.h"
 #include "inode.h"
-#include "bitmap.h"
+#include "intmap.h"
 #include "data_block.h"
 #include "superblock.h"
 
 typedef struct filesystem {
-	inode_t inodes[MAX_INODES];  // array fijo de inodos
-	bitmap_t bitmap;             // inode + data
+	inode_t inodes[MAX_INODES];  // array fijo de inodos (no se usaria mem dinamica) (esto seria la tabla de inodos?)
+	intmap_t intmap;             // inode + data
 	superblock_t superblock;
 	data_block_t data_block[MAX_BLOCKS];
 } filesystem_t;
@@ -148,13 +148,5 @@ int fs_change_mode(filesystem_t *fs, const char *path, mode_t mode);
  * Returns 0 on success or a negative error on failure.
  */
 int fs_change_owner(filesystem_t *fs, const char *path, uid_t uid, gid_t gid);
-
-/**
- * Checks permissions for inode 'inode_num' against (uid, gid) and 'access_mode'.
- *
- * Returns 0 if access is allowed or a negative error otherwise.
- */
-int fs_check_permission(
-        filesystem_t *fs, int inode_num, uid_t uid, gid_t gid, int access_mode);
 
 #endif /* FILESYSTEM_H */

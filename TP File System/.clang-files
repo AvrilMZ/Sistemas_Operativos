@@ -1,9 +1,9 @@
 fisopfs.c
-src/bitmap.c
+src/intmap.c
 src/directory.c
 src/filesystem.c
 src/inode.c
-src/bitmap.h
+src/intmap.h
 src/data_block.h
 src/directory.h
 src/filesystem.h

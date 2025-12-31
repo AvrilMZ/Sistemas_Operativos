@@ -1,7 +1,7 @@
-#include "bitmap.h"
+#include "intmap.h"
 
 void
-bitmap_init(bitmap_t *bm)
+intmap_init(intmap_t *bm)
 {
 	if (!bm) {
 		return;
@@ -15,7 +15,7 @@ bitmap_init(bitmap_t *bm)
 }
 
 int
-is_inode_used(bitmap_t *bm, uint32_t inode_index)
+is_inode_used(intmap_t *bm, uint32_t inode_index)
 {
 	if (!bm || inode_index >= MAX_INODES) {
 		return -1;
@@ -24,7 +24,7 @@ is_inode_used(bitmap_t *bm, uint32_t inode_index)
 }
 
 void
-set_inode_used(bitmap_t *bm, uint32_t inode_index)
+set_inode_used(intmap_t *bm, uint32_t inode_index)
 {
 	if (!bm || inode_index >= MAX_INODES) {
 		return;
@@ -33,7 +33,7 @@ set_inode_used(bitmap_t *bm, uint32_t inode_index)
 }
 
 void
-clear_inode_used(bitmap_t *bm, uint32_t inode_index)
+clear_inode_used(intmap_t *bm, uint32_t inode_index)
 {
 	if (!bm || inode_index >= MAX_INODES) {
 		return;
@@ -42,7 +42,7 @@ clear_inode_used(bitmap_t *bm, uint32_t inode_index)
 }
 
 int
-find_free_inode(bitmap_t *bm)
+find_free_inode(intmap_t *bm)
 {
 	if (!bm) {
 		return -1;
@@ -60,7 +60,7 @@ find_free_inode(bitmap_t *bm)
 }
 
 int
-is_block_used(bitmap_t *bm, uint32_t block_index)
+is_block_used(intmap_t *bm, uint32_t block_index)
 {
 	if (!bm || block_index >= MAX_BLOCKS) {
 		return -1;
@@ -69,7 +69,7 @@ is_block_used(bitmap_t *bm, uint32_t block_index)
 }
 
 void
-set_block_used(bitmap_t *bm, uint32_t block_index)
+set_block_used(intmap_t *bm, uint32_t block_index)
 {
 	if (!bm || block_index >= MAX_BLOCKS) {
 		return;
@@ -78,7 +78,7 @@ set_block_used(bitmap_t *bm, uint32_t block_index)
 }
 
 void
-clear_block_used(bitmap_t *bm, uint32_t block_index)
+clear_block_used(intmap_t *bm, uint32_t block_index)
 {
 	if (!bm || block_index >= MAX_BLOCKS) {
 		return;
@@ -87,7 +87,7 @@ clear_block_used(bitmap_t *bm, uint32_t block_index)
 }
 
 int
-find_free_block(bitmap_t *bm)
+find_free_block(intmap_t *bm)
 {
 	if (!bm) {
 		return -1;

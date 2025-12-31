@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include "filesystem.h"
 #include "inode.h"
 
@@ -8,14 +10,14 @@ inode_init(inode_t *inode)
 		return;
 	}
 	inode->file_size_bytes = 0;
-	inode->owner_user_id = 0;
-	inode->owner_group_id = 0;
+	inode->owner_user_id = getuid();
+	inode->owner_group_id = getgid();
 	inode->permission_bits = PERM_READ;  // Modo lectura por default
 	time_t current_time;
 	inode->last_access_time = time(&current_time);
 	inode->last_modification_time = time(&current_time);
 	inode->last_metadata_change_time = time(&current_time);
-	inode->hard_links_count = 0;
+	inode->hard_links_count = 1;  // Un nuevo archivo ya tiene una referencia
 	for (int i = 0; i < NUM_DIRECT_BLOCKS; i++) {
 		inode->direct_block_ptrs[i] = -1;
 	}
@@ -29,8 +31,8 @@ allocate_inode(filesystem_t *fs)
 		return -1;
 	}
 	for (int i = 0; i < MAX_INODES; i++) {
-		if (!is_inode_used(&fs->bitmap, i)) {
-			set_inode_used(&fs->bitmap, i);
+		if (!is_inode_used(&fs->intmap, i)) {
+			set_inode_used(&fs->intmap, i);
 			inode_init(&fs->inodes[i]);
 			return i;
 		}
@@ -95,7 +97,7 @@ inode_add_direct_block(filesystem_t *fs, inode_t *inode, uint32_t block_number)
 	for (int i = 0; i < NUM_DIRECT_BLOCKS; i++) {
 		if (inode->direct_block_ptrs[i] == -1) {
 			inode->direct_block_ptrs[i] = block_number;
-			set_block_used(&fs->bitmap, block_number);
+			set_block_used(&fs->intmap, block_number);
 			return 0;
 		}
 	}
@@ -105,10 +107,12 @@ inode_add_direct_block(filesystem_t *fs, inode_t *inode, uint32_t block_number)
 int
 inode_get_direct_block(inode_t *inode, int index)
 {
-	if (!inode || index < 0 || index >= NUM_DIRECT_BLOCKS)
+	if (!inode || index < 0 || index >= NUM_DIRECT_BLOCKS) {
 		return -1;
-	if (inode->direct_block_ptrs[index] == -1)
+	}
+	if (inode->direct_block_ptrs[index] == -1) {
 		return -1;
+	}
 	return inode->direct_block_ptrs[index];
 }
 
@@ -121,10 +125,10 @@ inode_free(filesystem_t *fs, int inode_index)
 	inode_t *inode = &fs->inodes[inode_index];
 	for (int i = 0; i < NUM_DIRECT_BLOCKS; i++) {
 		if (inode->direct_block_ptrs[i] != -1) {
-			clear_block_used(&fs->bitmap, inode->direct_block_ptrs[i]);
+			clear_block_used(&fs->intmap, inode->direct_block_ptrs[i]);
 			inode->direct_block_ptrs[i] = -1;
 		}
 	}
-	clear_inode_used(&fs->bitmap, inode_index);
+	clear_inode_used(&fs->intmap, inode_index);
 	inode_init(inode);
 }

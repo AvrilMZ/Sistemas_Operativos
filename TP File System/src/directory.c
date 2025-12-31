@@ -85,18 +85,13 @@ directory_list_entries(directory_t *dir, char buffer[][MAX_FILENAME_LEN])
 directory_t *
 get_directory_by_inode(filesystem_t *fs, inode_t *inode)
 {
-	printf("[DEBUG] GET DIRECTORY BY ID\n");
 	if (!fs || inode->inode_type != INODE_DIR) {
-		printf("[DEBUG] get_directory_by_inode failed: inodeS not dir "
-		       "or fs NULL\n");
 		return NULL;
 	}
+
 	for (int i = 0; i < NUM_DIRECT_BLOCKS; i++) {
 		int block_number = inode_get_direct_block(inode, i);
-		printf("[DEBUG] inode block %d = %d\n", i, block_number);
 		if (block_number != -1) {
-			printf("[DEBUG] returning directory at block %d\n",
-			       block_number);
 			return (directory_t *) &fs->data_block[block_number].data;
 		}
 	}
