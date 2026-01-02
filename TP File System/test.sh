@@ -125,7 +125,7 @@ echo
 fusermount -u "$MNT"
 wait $FSPID 2>/dev/null
 
-test_title "Desmonado del File System"
+test_title "Desmontado del File System"
 [ $(ls -A /mnt) ] && test_fail "Error al desmontar el File System" || test_pass "File System desmontado correctamente"
 echo
 

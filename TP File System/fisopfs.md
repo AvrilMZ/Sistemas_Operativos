@@ -227,7 +227,7 @@ Modificación: 2025-12-31 02:26:17.000000000 -0300
 [14] Error al borrar directorio no vacío
 ✔ No permite borrar directorio no vacío
 
-[15] Desmonado del File System
+[15] Desmontado del File System
 ✔ File System desmontado correctamente
 
 [16] Creación de archivo de persistencia
